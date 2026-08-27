@@ -34,9 +34,9 @@ class PitConfigurationType : ConfigurationType {
 
     companion object {
         private val ICON: Icon = IconLoader.getIcon("/pit.svg", PitConfigurationType::class.java)
-        private const val DISPLAY_NAME = "PIT Runner"
+        private const val DISPLAY_NAME = "Mutation Test"
         private const val ID = "PIT"
-        private const val CONFIGURATION_DESCRIPTION = "Executes PIT mutation testing"
+        private const val CONFIGURATION_DESCRIPTION = "Executes mutation testing"
 
         fun getInstance(): PitConfigurationType? =
             ContainerUtil.findInstance(

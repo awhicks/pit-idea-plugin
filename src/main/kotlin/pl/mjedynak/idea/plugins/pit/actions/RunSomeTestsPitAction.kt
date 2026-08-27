@@ -22,7 +22,7 @@ class RunSomeTestsPitAction : DirectoryOrFilePitAction() {
         (vfile.isDirectory || vfile.fileType == JavaFileType.INSTANCE) &&
             module.moduleTestsWithDependentsScope.contains(vfile)
 
-    override fun getTitleForItem(item: String): String = "Pitest using tests in '$item'"
+    override fun getTitleForItem(item: String): String = "Mutation Test using tests in '$item'"
 
     override fun makeConfigurationForClassList(
         classList: String,
@@ -43,7 +43,7 @@ class RunSomeTestsPitAction : DirectoryOrFilePitAction() {
                 }
             }
         return PitRunConfiguration(
-            "PIT using tests in $title",
+            "PIT Mutation Test using tests in $title",
             project,
             PitConfigurationType.getInstance()!!.configurationFactories[0],
             defaultArgumentsContainerFactory,

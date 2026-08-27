@@ -29,7 +29,7 @@ class MutationReportParserTest {
         val secondRecord = records[1]
         assertEquals("calculator.Calculator", secondRecord.mutatedClass)
         assertEquals(10, secondRecord.lineNumber)
-        assertEquals(MutationStatus.SURVIVED, secondRecord.status)
+        assertEquals(MutationStatus.LINES_NEEDING_BETTER_TESTING, secondRecord.status)
     }
 
     @Test
@@ -44,7 +44,7 @@ class MutationReportParserTest {
         assertTrue(records[0].detected)
         assertEquals("add", records[0].mutatedMethod)
         assertEquals("Replaced integer addition with subtraction", records[0].description)
-        assertEquals(MutationStatus.SURVIVED, records[1].status)
+        assertEquals(MutationStatus.LINES_NEEDING_BETTER_TESTING, records[1].status)
     }
 
     @Test
@@ -66,10 +66,10 @@ class MutationReportParserTest {
 
         assertEquals(3, records.size)
         val noCoverageRecord = records.single { it.lineNumber == 14 }
-        assertEquals(MutationStatus.NO_COVERAGE, noCoverageRecord.status)
+        assertEquals(MutationStatus.LINES_NOT_TESTED, noCoverageRecord.status)
         assertTrue(!noCoverageRecord.detected)
         val survivedRecord = records.single { it.lineNumber == 10 }
-        assertEquals(MutationStatus.SURVIVED, survivedRecord.status)
+        assertEquals(MutationStatus.LINES_NEEDING_BETTER_TESTING, survivedRecord.status)
     }
 
     @Test

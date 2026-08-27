@@ -181,10 +181,11 @@ class PitPluginIntegrationTest {
                 "At least one line should be marked in the editor.\nRaw helper output:\n$coverage",
             )
             assertEquals(
-                mapOf(6 to "COVERED:1:1", 10 to "COVERED:1:1", 14 to "UNCOVERED:1:1"),
+                mapOf(14 to "UNCOVERED:1:1"),
                 annotatedLines,
-                "Lines 6 and 10 should be COVERED, line 14 should be UNCOVERED (NO_COVERAGE mutations), " +
-                    "and every annotated line must have a gutter icon with a non-blank tooltip and a " +
+                "Only line 14 should be marked UNCOVERED (NO_COVERAGE mutations); " +
+                    "lines 6 and 10 are KILLED and thus hidden (only actionable lines are shown). " +
+                    "Every annotated line must have a gutter icon with a non-blank tooltip and a " +
                     "popup menu.\n" +
                     "Raw helper output:\n$coverage",
             )

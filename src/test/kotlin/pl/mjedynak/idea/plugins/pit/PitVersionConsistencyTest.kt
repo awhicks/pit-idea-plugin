@@ -9,12 +9,17 @@ class PitVersionConsistencyTest {
     private val populatorSource = File("src/main/kotlin/pl/mjedynak/idea/plugins/pit/ClassPathPopulator.kt").readText()
     private val pluginXml = File("META-INF/plugin.xml").readText()
 
+    // Bundled in lib/ but intentionally NOT added to PIT's runtime classpath
+    private val excludedFromClasspath = setOf("pitest-junit5-plugin")
+
     @Test
     fun `should have all pitest dependencies from build gradle in classpath populator`() {
         val dependencies = extractPitestDependencies()
 
         dependencies.forEach { (artifactId, version) ->
-            assertArtifactIsReferenced(artifactId)
+            if (artifactId !in excludedFromClasspath) {
+                assertArtifactIsReferenced(artifactId)
+            }
             assertVersionIsPresent(artifactId, version)
         }
     }

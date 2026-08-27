@@ -14,7 +14,7 @@ class ClassPathPopulator {
             addFirst("${path}pitest-entry-$PITEST_VERSION.jar")
             addFirst("${path}commons-text-1.14.0.jar")
             addFirst("${path}commons-lang3-3.18.0.jar") // transitive dependency of commons-text
-            addFirst("${path}pitest-junit5-plugin-$PITEST_JUNIT5_PLUGIN_VERSION.jar")
+            addFirst("${path}pitest-rv-plugin-$PITEST_RV_PLUGIN_VERSION.jar")
             if (noPlatformLauncherDependency(classPath)) {
                 addFirst("${path}junit-platform-launcher-6.1.1.jar")
             }
@@ -25,8 +25,9 @@ class ClassPathPopulator {
         classPath.pathList.none { it.contains("junit-platform-launcher") }
 
     companion object {
-        const val PITEST_VERSION = "1.25.9"
+        const val PITEST_VERSION = "1.30.0"
         const val PITEST_JUNIT5_PLUGIN_VERSION = "1.2.3"
+        const val PITEST_RV_PLUGIN_VERSION = "0.1"
         val SEPARATOR: String = FileSystems.getDefault().separator
         const val PLUGIN_NAME = "pit-idea-plugin"
         const val LIB_DIR = "lib"

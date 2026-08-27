@@ -7,7 +7,7 @@ plugins {
 }
 
 
-val pitVersion = "1.25.9"
+val pitVersion = "1.30.0"
 val pitJunit5PluginVersion = "1.2.3"
 
 kotlin {
@@ -47,6 +47,7 @@ dependencies {
     implementation("org.pitest:pitest-entry:$pitVersion") { isTransitive = false }
     implementation("org.pitest:pitest:$pitVersion") { isTransitive = false }
     implementation("org.pitest:pitest-junit5-plugin:$pitJunit5PluginVersion")
+    implementation(files("libs/pitest-rv-plugin-0.1.jar"))
     implementation("org.apache.commons:commons-text:1.14.0")
     implementation("org.junit.platform:junit-platform-launcher:6.1.1") { isTransitive = false }
     // -- pitest dependencies marker

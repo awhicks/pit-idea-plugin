@@ -66,6 +66,6 @@ class PitConfigurationFormPopulator {
     }
 
     companion object {
-        const val OTHER_PARAMS = "--outputFormats XML,HTML"
+        const val OTHER_PARAMS = "--outputFormats XML,HTML --mutators AOD,REMOVE_CONDITIONALS"
     }
 }

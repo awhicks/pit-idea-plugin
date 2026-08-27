@@ -54,17 +54,17 @@ class PitCoverageAnnotator(
     fun updateFromReport(reportDir: File): String {
         val mutationsFile =
             resolveMutationsFile(reportDir)
-                ?: return "PIT coverage: no mutations.xml found under ${reportDir.absolutePath}"
+                ?: return "Mutation coverage: no mutations.xml found under ${reportDir.absolutePath}"
         val records =
             try {
                 MutationReportParser().parse(mutationsFile)
             } catch (e: Exception) {
-                logger.warn("PIT coverage: failed to parse ${mutationsFile.absolutePath}", e)
-                return "PIT coverage: failed to parse ${mutationsFile.absolutePath}"
+                logger.warn("Mutation coverage: failed to parse ${mutationsFile.absolutePath}", e)
+                return "Mutation coverage: failed to parse ${mutationsFile.absolutePath}"
             }
         if (records.isEmpty()) {
-            logger.warn("PIT coverage: no mutations in ${mutationsFile.absolutePath}")
-            return "PIT coverage: no mutations in ${mutationsFile.absolutePath}"
+            logger.warn("Mutation coverage: no mutations in ${mutationsFile.absolutePath}")
+            return "Mutation coverage: no mutations in ${mutationsFile.absolutePath}"
         }
         mutationsByClassAndLine =
             records.groupBy { it.mutatedClass }.mapValues { (_, classRecords) -> classRecords.groupBy { it.lineNumber } }
@@ -75,14 +75,12 @@ class PitCoverageAnnotator(
                 .getInstance()
                 .allEditors
                 .filter { it.project == this.project }
-        var coveredLines = 0
         var uncoveredLines = 0
         var markedEditors = 0
         openEditors.forEach { editor ->
             removeAnnotation(editor)
-            val (editorCovered, editorUncovered) = annotateEditor(editor)
-            if (editorCovered > 0 || editorUncovered > 0) {
-                coveredLines += editorCovered
+            val editorUncovered = annotateEditor(editor)
+            if (editorUncovered > 0) {
                 uncoveredLines += editorUncovered
                 markedEditors++
             }
@@ -91,11 +89,11 @@ class PitCoverageAnnotator(
         val resolution = resolvedFiles.entries.joinToString(", ") { "${it.key} -> ${it.value}" }
         val unresolvedClasses = resolvedFiles.filterValues { it == "NOT FOUND" }.keys
         if (unresolvedClasses.isNotEmpty()) {
-            logger.warn("PIT coverage: could not resolve editor file for classes: ${unresolvedClasses.joinToString()}")
+            logger.warn("Mutation coverage: could not resolve editor file for classes: ${unresolvedClasses.joinToString()}")
         }
-        logger.info("PIT coverage: $resolution")
-        return "PIT coverage: ${records.size} mutations, ${mutationsByClassAndLine.size} classes, " +
-            "$coveredLines covered + $uncoveredLines uncovered line(s) marked in $markedEditors open editor(s). " +
+        logger.info("Mutation coverage: $resolution")
+        return "Mutation coverage: ${records.size} mutations, ${mutationsByClassAndLine.size} classes, " +
+            "$uncoveredLines line(s) needing attention marked in $markedEditors open editor(s). " +
             "Classes: $resolution"
     }
 
@@ -134,12 +132,11 @@ class PitCoverageAnnotator(
         return File(reportRoot, "mutations.xml")
     }
 
-    private fun annotateEditor(editor: Editor): Pair<Int, Int> {
+    private fun annotateEditor(editor: Editor): Int {
         if (editor.isDisposed || project.isDisposed || mutationsByClassAndLine.isEmpty()) {
-            return 0 to 0
+            return 0
         }
-        val file = FileDocumentManager.getInstance().getFile(editor.document) ?: return 0 to 0
-        var covered = 0
+        val file = FileDocumentManager.getInstance().getFile(editor.document) ?: return 0
         var uncovered = 0
         mutationsByClassAndLine.forEach { (mutatedClass, linesByLineNumber) ->
             val target = resolveFileForClass(mutatedClass) ?: return@forEach
@@ -149,6 +146,9 @@ class PitCoverageAnnotator(
             linesByLineNumber.forEach { (line, mutations) ->
                 if (line - 1 < editor.document.lineCount) {
                     val status = lineStatus(mutations)
+                    if (status != LineCoverageStatus.UNCOVERED) {
+                        return@forEach
+                    }
                     val tooltip = buildTooltip(mutations)
                     val startOffset = editor.document.getLineStartOffset(line - 1)
                     val endOffset = editor.document.getLineEndOffset(line - 1)
@@ -166,20 +166,19 @@ class PitCoverageAnnotator(
                     if (tooltip.isNotBlank()) {
                         highlighter.setGutterIconRenderer(CoverageGutterIconRenderer(status, tooltip, project))
                     }
-                    if (status == LineCoverageStatus.COVERED) {
-                        covered++
-                    } else {
-                        uncovered++
-                    }
+                    uncovered++
                 }
             }
         }
-        return covered to uncovered
+        return uncovered
     }
 
     private fun lineStatus(mutations: List<MutationRecord>): LineCoverageStatus =
         when {
-            mutations.any { it.status == MutationStatus.SURVIVED || it.status == MutationStatus.NO_COVERAGE } -> {
+            mutations.any {
+                it.status == MutationStatus.LINES_NEEDING_BETTER_TESTING ||
+                    it.status == MutationStatus.LINES_NOT_TESTED
+            } -> {
                 LineCoverageStatus.UNCOVERED
             }
 
@@ -256,7 +255,7 @@ class PitCoverageAnnotator(
  * [com.intellij.openapi.editor.markup.RangeHighlighter.setGutterIconRenderer]. Shows a
  * status-colored square in the gutter; hovering it displays the mutation descriptions in the
  * report-style tooltip format (same text as the error-stripe tooltip). Right-clicking it opens a
- * context menu with "Clear PIT coverage markings". [DumbAware] keeps the icon visible while
+ * context menu with "Clear mutation coverage markings". [DumbAware] keeps the icon visible while
  * indexing runs. Removing the highlighter releases the renderer.
  */
 private class CoverageGutterIconRenderer(
@@ -271,7 +270,7 @@ private class CoverageGutterIconRenderer(
 
     override fun getPopupMenuActions(): ActionGroup =
         DefaultActionGroup(
-            object : AnAction("Clear PIT coverage markings"), DumbAware {
+            object : AnAction("Clear mutation coverage markings"), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
                     project.getService(PitCoverageAnnotator::class.java).clearAnnotations()
                 }

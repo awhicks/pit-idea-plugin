@@ -15,7 +15,7 @@ import pl.mjedynak.idea.plugins.pit.configuration.PitConfigurationType
 import pl.mjedynak.idea.plugins.pit.configuration.PitRunConfiguration
 
 class PitTestSomeClassesAction : DirectoryOrFilePitAction() {
-    override fun getTitleForItem(item: String): String = "Pitest classes in '$item'"
+    override fun getTitleForItem(item: String): String = "Mutation Test classes in '$item'"
 
     override fun isEnabled(
         project: Project,
@@ -46,7 +46,7 @@ class PitTestSomeClassesAction : DirectoryOrFilePitAction() {
                 }
             }
         return PitRunConfiguration(
-            "PIT for classes in $title",
+            "PIT Mutation Test for classes in $title",
             project,
             PitConfigurationType.getInstance()!!.configurationFactories[0],
             defaultArgumentsContainerFactory,
