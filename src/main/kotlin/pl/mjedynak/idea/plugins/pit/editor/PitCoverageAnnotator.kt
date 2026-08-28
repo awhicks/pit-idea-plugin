@@ -16,6 +16,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
@@ -85,6 +86,7 @@ class PitCoverageAnnotator(
                 markedEditors++
             }
         }
+        refreshMutationListPanel(records, reportDir)
         val resolvedFiles = mutationsByClassAndLine.keys.associateWith { resolveFileForClass(it)?.path ?: "NOT FOUND" }
         val resolution = resolvedFiles.entries.joinToString(", ") { "${it.key} -> ${it.value}" }
         val unresolvedClasses = resolvedFiles.filterValues { it == "NOT FOUND" }.keys
@@ -110,11 +112,49 @@ class PitCoverageAnnotator(
         }
         mutationsByClassAndLine = emptyMap()
         sourceFilesByClass = emptyMap()
+        clearMutationListPanel()
         EditorFactory
             .getInstance()
             .allEditors
             .filter { it.project == project }
             .forEach { removeAnnotation(it) }
+    }
+
+    /**
+     * Pushes the parsed [records] into the "Mutation List" tool window tabs (mutant tree +
+     * coverage HTML) and brings the window to the front so the user sees the results
+     * alongside the editor bands. Failures here are logged but never propagated — they must
+     * not break the run console.
+     */
+    private fun refreshMutationListPanel(
+        records: List<MutationRecord>,
+        reportDir: File,
+    ) {
+        if (project.isDisposed) {
+            return
+        }
+        try {
+            project.getService(MutationListPanel::class.java).update(records)
+            project.getService(MutationCoveragePanel::class.java).update(records, reportDir)
+            ToolWindowManager
+                .getInstance(project)
+                .getToolWindow(MUTATION_LIST_TOOL_WINDOW_ID)
+                ?.show()
+        } catch (e: Exception) {
+            logger.warn("Mutation List tool window refresh failed", e)
+        }
+    }
+
+    private fun clearMutationListPanel() {
+        if (project.isDisposed) {
+            return
+        }
+        try {
+            project.getService(MutationListPanel::class.java).clear()
+            project.getService(MutationCoveragePanel::class.java).clear()
+        } catch (e: Exception) {
+            logger.warn("Mutation List tool window clear failed", e)
+        }
     }
 
     private fun resolveMutationsFile(reportDir: File): File? {
@@ -236,6 +276,7 @@ class PitCoverageAnnotator(
 
     private companion object {
         val SOURCE_EXTENSIONS = setOf("java", "kt")
+        const val MUTATION_LIST_TOOL_WINDOW_ID = "Mutation List"
     }
 
     private fun removeAnnotation(editor: Editor) {

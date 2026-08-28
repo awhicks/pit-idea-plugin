@@ -60,6 +60,7 @@ dependencies {
     intellijPlatform {
         intellijIdea("2026.2")
         bundledPlugin("com.intellij.java")
+        bundledPlugin("com.intellij.modules.jcef")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Starter, configurationName = "integrationTestImplementation")
     }

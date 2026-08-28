@@ -11,9 +11,14 @@
         <b>Usage:</b> Run->Edit Configurations->Defaults->Mutation Test
         <br/><br/>
       ]]></description>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
     <change-notes>
         <![CDATA[
+           version 1.6.0
+           <br/>
+           <ul>
+           <li>Add "Mutation List" tool window showing surviving mutants grouped by class with click-to-navigate</li>
+           </ul>
            version 1.5.0
            <br/>
            <ul>
@@ -208,6 +213,13 @@
     <extensions defaultExtensionNs="com.intellij">
         <configurationType implementation="pl.mjedynak.idea.plugins.pit.configuration.PitConfigurationType"/>
         <projectService serviceImplementation="pl.mjedynak.idea.plugins.pit.editor.PitCoverageAnnotator"/>
+        <projectService serviceImplementation="pl.mjedynak.idea.plugins.pit.editor.MutationListPanel"/>
+        <projectService serviceImplementation="pl.mjedynak.idea.plugins.pit.editor.MutationCoveragePanel"/>
+        <toolWindow id="Mutation List"
+                    anchor="bottom"
+                    factoryClass="pl.mjedynak.idea.plugins.pit.editor.MutationListToolWindowFactory"
+                    icon="/pit.svg"/>
     </extensions>
     <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.modules.jcef</depends>
 </idea-plugin>

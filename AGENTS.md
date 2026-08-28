@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-IntelliJ IDEA plugin for [PIT Mutation Testing](http://pitest.org). Adds a run configuration and context menu actions to execute PIT directly within the IDE. After a run finishes, only **actionable** mutation lines (statuses `LINES_NEEDING_BETTER_TESTING`/`LINES_NOT_TESTED`, formerly `SURVIVED`/`NO_COVERAGE`) are marked in the editor with red gutter bands; covered lines (`KILLED`/`NON_VIABLE`) and other statuses are hidden to reduce noise. Each band carries the mutation descriptions as a hover tooltip (gutter icon + scrollbar stripe) and a right-click context menu to clear the markings. Current version: **1.5.0**, bundling PIT **1.30.0**, JUnit5 plugin **1.2.3**, and pitest-rv-plugin **0.1** (AOD mutators). Default mutators: **AOD + REMOVE_CONDITIONALS**.
+IntelliJ IDEA plugin for [PIT Mutation Testing](http://pitest.org). Adds a run configuration and context menu actions to execute PIT directly within the IDE. After a run finishes, only **actionable** mutation lines (statuses `LINES_NEEDING_BETTER_TESTING`/`LINES_NOT_TESTED`, formerly `SURVIVED`/`NO_COVERAGE`) are marked in the editor with red gutter bands; covered lines (`KILLED`/`NON_VIABLE`) and other statuses are hidden to reduce noise. Each band carries the mutation descriptions as a hover tooltip (gutter icon + scrollbar stripe) and a right-click context menu to clear the markings. The same actionable mutations also appear in a **"Mutation List" tool window** (bottom anchor) grouped by class with click-to-navigate to the source line. Current version: **1.6.0**, bundling PIT **1.30.0**, JUnit5 plugin **1.2.3**, and pitest-rv-plugin **0.1** (AOD mutators). Default mutators: **AOD + REMOVE_CONDITIONALS**.
 
 ## Build & Run Commands
 
@@ -51,11 +51,14 @@ src/main/kotlin/pl/mjedynak/idea/plugins/pit/
 │       └── ProgramParametersListPopulator.kt
 ├── JavaParametersCreator.kt       # Builds JavaParameters for PIT execution
 ├── ClassPathPopulator.kt          # Assembles PIT classpath from plugin dir
-├── editor/             # Editor coverage annotation after PIT run
+├── editor/             # Editor coverage annotation + Mutation List tool window after PIT run
 │   ├── MutationStatus.kt            # PIT mutation status enum (KILLED/SURVIVED/NO_COVERAGE/...) + fromXml
 │   ├── MutationReportParser.kt      # Parses mutations.xml; keeps ALL mutations incl. NO_COVERAGE
 │   ├── CoverageLineMarkerRenderer.kt # Status-colored gutter band (LineMarkerRendererEx, Position.LEFT)
-│   └── PitCoverageAnnotator.kt       # Project service: parses report + annotates open editors (band + gutter icon w/ hover tooltip + right-click clear menu)
+│   ├── PitCoverageAnnotator.kt       # Project service: parses report + annotates open editors (band + gutter icon w/ hover tooltip + right-click clear menu) + refreshes Mutation List panel + Coverage panel
+│   ├── MutationListPanel.kt          # Project service: tree of surviving mutants grouped by class (click-to-navigate) — "Mutations" tab
+│   ├── MutationCoveragePanel.kt      # Project service: JCEF browser rendering HTML mutation-coverage summary per class — "Coverage" tab
+│   └── MutationListToolWindowFactory.kt # Registers the "Mutation List" tool window (bottom anchor, DumbAware) with two tabs
 ├── console/DirectoryReader.kt     # Finds latest report directory
 ├── gradle/GradleProjectDeterminer.kt           # Detects Gradle projects
 └── maven/                        # Maven project detection + pom.xml parsing
@@ -142,17 +145,20 @@ PitRunConfiguration (ModuleBasedConfiguration)
 PitRunConfiguration.startProcess (executor thread)
     ↓ invokeLater (EDT)
 PitCoverageAnnotator.clearAnnotations()                 # clears stale markings BEFORE the run
-                                                        #   (bands + gutter icons + cached report maps)
+                                                        #   (bands + gutter icons + cached report maps
+                                                        #    + Mutation List tool window panel)
 
 PitRunConfiguration.processTerminated (executor thread)
     ↓ invokeLater (EDT)
 PitCoverageAnnotator.updateFromReport(File(reportDir))   # project service
     ├── MutationReportParser.parse(mutations.xml)        # keeps ALL mutations incl. NO_COVERAGE
     ├── resolve target files by sourceFile name → PsiFile
-    └── Editor.markupModel → per annotated line:
-        ├── CoverageLineMarkerRenderer (status-colored band, Position.LEFT)
-        ├── errorStripeMarkColor + errorStripeTooltip (report-style descriptions)
-        └── RangeHighlighter.setGutterIconRenderer(GutterIconRenderer)   # status-colored square icon w/ hover tooltip + right-click clear menu
+    ├── Editor.markupModel → per annotated line:
+    │   ├── CoverageLineMarkerRenderer (status-colored band, Position.LEFT)
+    │   ├── errorStripeMarkColor + errorStripeTooltip (report-style descriptions)
+    │   └── RangeHighlighter.setGutterIconRenderer(GutterIconRenderer)   # status-colored square icon w/ hover tooltip + right-click clear menu
+    └── refreshMutationListPanel(records)                # pushes actionable records to MutationListPanel
+                                                          #   + ToolWindowManager.show("Mutation List")
 ```
 
 - **Markings are cleared before each run**: `PitRunConfiguration.startProcess()` calls `clearPreviousCoverage()` first, which dispatches `PitCoverageAnnotator.clearAnnotations()` to the EDT via `invokeLater` (same required try/catch pattern as `processTerminated`). `clearAnnotations()` removes the coverage highlighters from all open editors **and** resets the cached `mutationsByClassAndLine`/`sourceFilesByClass` maps — the map reset matters because the `editorCreated` listener re-annotates editors on open, and without it a file opened *during* the run would be re-marked with stale data. So the editor is clean while PIT runs, and markings appear only after the new report is parsed.
@@ -166,6 +172,36 @@ PitCoverageAnnotator.updateFromReport(File(reportDir))   # project service
 - PIT's `mutations.xml` contains one `<mutation>` per mutation with a `status` attribute. All mutations are parsed and kept, then aggregated per source line. **Only actionable (uncovered) lines are marked in the editor** — lines where all mutations are `KILLED`/`NON_VIABLE` (covered) or `TIMED_OUT`/etc. (unknown) are skipped to reduce noise. A line is `UNCOVERED` (red band) if any mutation is `LINES_NEEDING_BETTER_TESTING` (PIT XML `SURVIVED`) or `LINES_NOT_TESTED` (PIT XML `NO_COVERAGE`). The `MutationStatus` enum uses the renamed values; `MutationStatus.fromXml()` maps PIT's XML strings to them. Report colors: uncovered `#ffaaaa` (light) / `0x8B3333` (dark). Each highlighter sets `errorStripeMarkColor` + `errorStripeTooltip` carrying the report-style description list (`1. add : Replaced integer addition with subtraction → KILLED`), so hovering the scrollbar stripe shows the mutation descriptions.
 - **Tooltips are visible on the band itself, not just the scrollbar stripe**: each annotated line's `RangeHighlighter` also gets a `GutterIconRenderer` via `RangeHighlighter.setGutterIconRenderer(...)`. The renderer implements `DumbAware`, uses `GutterIconRenderer.Alignment.LEFT`, and returns a small status-colored square `Icon` (uncovered `0x8B3333`; drawn as an 8x8 rounded rect) plus `getTooltipText()` = the SAME report-style description text as the error-stripe tooltip (built once per line by `buildTooltip`, shared by both). Hovering the gutter icon shows the descriptions directly in the editor. **Right-clicking the gutter icon opens a context menu with "Clear mutation coverage markings"** (via `getPopupMenuActions()` returning a `DefaultActionGroup` with a `DumbAware` `AnAction`); the action calls `PitCoverageAnnotator.clearAnnotations()` directly — actions run on the EDT, so no `invokeLater` is needed, and the renderer receives the `Project` at construction to resolve the service. The renderer is skipped when a line's tooltip is blank. Removing the highlighter releases the renderer — no manual cleanup.
 - **`CoverageLineMarkerRenderer` must implement `LineMarkerRendererEx` with `Position.LEFT`.** A plain `LineMarkerRenderer` defaults to the RIGHT free-painters area, which has zero width on the New UI (2022.1+) — the renderer is attached to the markup model (integration test polls for it and passes) but `paint()` draws into a 0-width rect, so nothing is ever visible. This cost three rounds of "no coverage in the editor" debugging before being identified. The LEFT area always has a guaranteed minimum width.
+
+### Mutation List Tool Window
+
+```
+MutationListToolWindowFactory (registered in plugin.xml, anchor="bottom", DumbAware)
+    └── createToolWindowContent → two tabs:
+        ├── "Mutations" tab → project.getService(MutationListPanel)  (JBTree)
+        └── "Coverage" tab  → project.getService(MutationCoveragePanel) (JCEF browser)
+
+MutationListPanel (project service, JBTree)
+    ├── update(records) — filters to LINES_NEEDING_BETTER_TESTING/LINES_NOT_TESTED,
+    │                     groups by mutatedClass (sorted), each leaf = one MutationRecord
+    │                     rendered as "lineNum: description [STATUS]"
+    └── mouseClicked on a leaf → OpenFileDescriptor(project, virtualFile, line-1, 0).navigate(true)
+                                  (resolves the file via JavaPsiFacade.findClass first,
+                                   then FilenameIndex by sourceFile name as fallback)
+
+MutationCoveragePanel (project service, JCEF browser)
+    ├── update(records, reportDir) — loads PIT's own index.html from reportDir
+    │   (top-level first, then latest timestamped subdir for older PIT layouts)
+    └── clear() — loads an empty page
+```
+
+- Registered as `<projectService>` entries AND a `<toolWindow>` (anchor `bottom`, factory class = `MutationListToolWindowFactory`) in `META-INF/plugin.xml`. The factory is `DumbAware` so the window can be opened during indexing.
+- `MutationCoveragePanel` requires JCEF (`<depends>com.intellij.modules.jcef</depends>` in plugin.xml + `bundledPlugin("com.intellij.modules.jcef")` in build.gradle.kts). Falls back to a label if `JBCefApp.isSupported()` is false.
+- `PitCoverageAnnotator.updateFromReport()` calls `refreshMutationListPanel(records, reportDir)` after parsing — pushes ALL parsed records to the tree panel (which itself filters to actionable statuses) and tells the coverage panel to load PIT's `index.html` from `reportDir`. It then calls `ToolWindowManager.getInstance(project).getToolWindow("Mutation List")?.show()` to bring the window to the front. Failures are caught + logged, never propagated — they must not break the run console.
+- `PitCoverageAnnotator.clearAnnotations()` calls `clearMutationListPanel()` to reset both panels before each run, so stale data doesn't linger while PIT runs.
+- The panel duplicates the `resolveFileForClass` logic (JavaPsiFacade first → FilenameIndex fallback) rather than sharing it with `PitCoverageAnnotator` — kept simple because the annotator's version prefers open editor files when multiple match, while the panel just needs *any* matching source file (it doesn't matter if the file is currently open because `OpenFileDescriptor` will open it). **The tree panel wraps `resolveFileForClass` in `runReadAction`** — `JavaPsiFacade.findClass` and `FilenameIndex.getVirtualFilesByName` require a read lock; the mouse click handler runs on the EDT without one, so without the wrapper they silently return null and nothing opens.
+- Click handler is a `MouseAdapter.mouseClicked` on the `Tree` (not a `TreeSelectionListener`) so keyboard navigation doesn't trigger unwanted editor jumps.
+- The **Coverage tab** (`MutationCoveragePanel`) loads PIT's own generated `index.html` directly via `JBCefBrowser.loadURL()`, showing the full report (line coverage, mutation coverage, test strength) exactly as PIT generated it — no custom HTML. The panel resolves `index.html` the same way `resolveMutationsFile` does: top-level first (PIT 1.25.9+ layout), then the latest timestamped subdirectory for older layouts.
 
 ## Version Management
 
