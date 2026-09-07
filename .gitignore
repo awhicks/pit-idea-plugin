@@ -16,3 +16,5 @@ out/*
 !src/integrationTest/resources/testProject/.idea/modules.xml
 !src/integrationTest/resources/testProject/.idea/misc.xml
 !src/integrationTest/resources/testProject/.idea/workspace.xml
+
+.env
