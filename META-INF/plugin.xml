@@ -16,9 +16,14 @@
         Forked from the MIT-licensed <a href="https://github.com/mjedynak/pit-idea-plugin">pit-idea-plugin</a> by Michal Jedynak.
         <br/><br/>
       ]]></description>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
     <change-notes>
         <![CDATA[
+           version 1.6.1
+           <br/>
+           <ul>
+           <li>Fix issue with using an internal API</li>
+           </ul>
            version 1.6.0
            <br/>
            <ul>
