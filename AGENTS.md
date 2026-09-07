@@ -213,7 +213,7 @@ MutationCoveragePanel (project service, JCEF browser)
 | `build.gradle.kts` | `val pitVersion` / `val pitJunit5PluginVersion` | 1.30.0 / 1.2.3 |
 | `ClassPathPopulator.kt` | JAR filename strings | 1.30.0 / 1.2.3 / 0.1 |
 | `META-INF/plugin.xml` | Description text ("Bundled with PIT ...") | 1.30.0 |
-| `libs/pitest-rv-plugin-0.1.jar` | Inline JAR built from fork (not on Maven Central) | 0.1 |
+| `libs/pitest-rv-plugin-0.1.jar` | Inline JAR built from fork (not on Maven Central), Apache-2.0 | 0.1 |
 
 `pitest-rv-plugin` is NOT fetched from Maven Central — the published 0.1 is broken. Build the fork and copy the JAR to `libs/pitest-rv-plugin-0.1.jar` (see `libs/README.txt`). `PitVersionConsistencyTest` enforces consistency between `build.gradle.kts`, `ClassPathPopulator.kt`, and `META-INF/plugin.xml` for Maven-fetched dependencies; the inline JAR is checked by its literal filename in `ClassPathPopulator.kt`.
 
@@ -247,7 +247,8 @@ MutationCoveragePanel (project service, JCEF browser)
 - `LICENSE` is packaged into the plugin JAR's `META-INF` via the `tasks.jar` `metaInf` block — MIT requires the copyright notice to travel with distributed copies. Keep the upstream `2019 Michal Jedynak` line when editing it.
 - To publish: get a token from the plugins.jetbrains.com author profile ("Authorization tokens"), `export MARKETPLACE_TOKEN=...`, then `./gradlew publishPlugin` — or upload `build/distributions/*.zip` via the web UI ("Upload plugin"). First submission goes through manual JetBrains review; subsequent updates are usually auto-approved. Marketplace signs the plugin automatically on upload.
 - `since-build` is `262` because the plugin compiles to **Java 25 bytecode** (`jvmToolchain(25)`) and is only integration-tested against 2026.2. Older IDEs (JBR 17/21) would fail with `UnsupportedClassVersionError`. To widen support: lower the Kotlin JVM target (e.g. 21), lower `since-build`, and integration-test against the oldest claimed version first.
-- The Marketplace upload form asks for bundled third-party libraries + licenses: pitest/pitest-command-line/pitest-entry/pitest-junit5-plugin (Apache-2.0), junit-platform-launcher (EPL-2.0), commons-text + commons-lang3 (Apache-2.0), kotlin-stdlib (Apache-2.0), annotations (Apache-2.0), pitest-rv-plugin (bundled from the local fork in `libs/` — verify its upstream license permits redistribution).
+- The Marketplace upload form asks for bundled third-party libraries + licenses: pitest/pitest-command-line/pitest-entry/pitest-junit5-plugin (Apache-2.0), junit-platform-launcher (EPL-2.0), commons-text + commons-lang3 (Apache-2.0), kotlin-stdlib (Apache-2.0), annotations (Apache-2.0), pitest-rv-plugin (Apache-2.0, built from the local fork in `libs/` — see `libs/README.txt`; upstream ships no NOTICE file).
+- `third-party-licenses/` is packaged into the plugin JAR at `META-INF/third-party-licenses` via the `tasks.jar` `metaInf` block — Apache-2.0 §4 requires giving recipients a copy of the license, and the pitest/kotlin-stdlib/annotations/rv-plugin JARs do not carry one internally (the commons and junit-platform-launcher JARs carry theirs in their own `META-INF`).
 
 ## Key Gotchas
 

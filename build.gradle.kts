@@ -88,6 +88,9 @@ tasks.jar {
         from(rootDir) {
             include("LICENSE")
         }
+        from("third-party-licenses") {
+            into("third-party-licenses")
+        }
     }
 }
 
