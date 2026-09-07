@@ -12,11 +12,12 @@ IntelliJ IDEA plugin for [PIT Mutation Testing](http://pitest.org). Adds a run c
 ./gradlew build          # Full build (compile + test + format check)
 ./gradlew test           # Run unit tests only
 ./gradlew integrationTest # Run integration tests (starts real IDE with plugin)
+./gradlew verifyPlugin   # Run IntelliJ Plugin Verifier (internal API / compatibility check)
 ./gradlew spotlessApply  # Auto-format code (Java + Kotlin)
 ./gradlew spotlessCheck  # Check formatting without modifying
 ```
 
-CI runs `./gradlew integrationTest build` on push/PR to `master` (Java 25 temurin, Ubuntu).
+CI runs `./gradlew build integrationTest` on push/PR to `master` (Java 25 temurin, Ubuntu).
 
 **After every significant code change, run `./gradlew integrationTest` to verify the plugin loads and runs PIT end-to-end in a real IDE process.** `build` alone does not cover this.
 

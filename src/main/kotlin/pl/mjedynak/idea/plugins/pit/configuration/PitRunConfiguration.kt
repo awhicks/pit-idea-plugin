@@ -1,7 +1,6 @@
 package pl.mjedynak.idea.plugins.pit.configuration
 
 import com.intellij.execution.DefaultExecutionResult
-import com.intellij.execution.ExecutionBundle
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.ExecutionResult
 import com.intellij.execution.Executor
@@ -73,7 +72,7 @@ class PitRunConfiguration(
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
         populateFormIfNeeded()
         val group = SettingsEditorGroup<PitRunConfiguration>()
-        group.addEditor(ExecutionBundle.message("run.configuration.configuration.tab.title"), pitConfigurationForm)
+        group.addEditor("Configuration", pitConfigurationForm)
         // Extension editors are added automatically by the platform
         return group
     }
