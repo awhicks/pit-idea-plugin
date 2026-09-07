@@ -1,6 +1,6 @@
 <idea-plugin url="https://github.com/awhicks/pit-idea-plugin">
-    <name>WFU Mutation Testing</name>
-    <id>PIT mutation testing Idea plugin</id>
+    <name>Web-CAT Mutation Testing</name>
+    <id>com.github.awhicks.webcat-mutation-testing</id>
     <description><![CDATA[
         IntelliJ IDEA plugin for PIT Mutation Testing (pitest.org).
         <br/>
@@ -9,6 +9,11 @@
         Adds a 'Run configuration' that allows to execute PIT within IDE.
         <br/><br/>
         <b>Usage:</b> Run->Edit Configurations->Defaults->Mutation Test
+        <br/><br/>
+        After a run, lines needing better testing are marked in the editor (hover the gutter icon for
+        mutation descriptions), and actionable mutants are listed in the 'Mutation List' tool window.
+        <br/><br/>
+        Forked from the MIT-licensed <a href="https://github.com/mjedynak/pit-idea-plugin">pit-idea-plugin</a> by Michal Jedynak.
         <br/><br/>
       ]]></description>
     <version>1.6.0</version>
@@ -187,7 +192,7 @@
     </change-notes>
 
     <vendor email="hicksa@wfu.edu">Alex Hicks</vendor>
-    <idea-version since-build="233.11799.241"/>
+    <idea-version since-build="262"/>
 
     <application-components>
     </application-components>

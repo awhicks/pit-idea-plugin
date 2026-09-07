@@ -37,6 +37,14 @@ repositories {
     }
 }
 
+intellijPlatform {
+    publishing {
+        // Upload token from the plugins.jetbrains.com author profile ("Authorization tokens").
+        // Never commit the token itself; export MARKETPLACE_TOKEN before running publishPlugin.
+        token = providers.environmentVariable("MARKETPLACE_TOKEN")
+    }
+}
+
 val integrationTestImplementation = configurations.getByName("integrationTestImplementation") {
     extendsFrom(configurations.testImplementation.get())
 }
@@ -76,6 +84,9 @@ tasks.jar {
         from("META-INF") {
             include("plugin.xml")
             include("pluginIcon.svg")
+        }
+        from(rootDir) {
+            include("LICENSE")
         }
     }
 }

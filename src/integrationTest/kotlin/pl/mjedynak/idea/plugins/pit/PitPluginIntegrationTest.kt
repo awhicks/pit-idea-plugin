@@ -24,7 +24,7 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.minutes
 
-private const val PLUGIN_ID = "PIT mutation testing Idea plugin"
+private const val PLUGIN_ID = "com.github.awhicks.webcat-mutation-testing"
 
 private const val TIMESTAMPED_DIR_NAME_LENGTH = 14
 

@@ -137,6 +137,7 @@ PitRunConfiguration (ModuleBasedConfiguration)
 - `PitRunConfiguration.resolveReportDir()` resolves the report directory the same way the PIT CLI does: absolute values as-is, relative values against `project.basePath`, blank values via `DefaultArgumentsContainerFactory` (inside `runReadAction`). It is used for `pit-output.log`, the console report link, AND the annotator call — otherwise a relative/blank stored `reportDir` made `File("")`/`File("report")` resolve against the IDE JVM CWD while PIT wrote to the project base path → report generated but no editor coverage.
 
 ### Main class executed in forked JVM
+
 `org.pitest.mutationtest.commandline.MutationCoverageReport`
 
 ### Editor Coverage Annotation
@@ -207,18 +208,19 @@ MutationCoveragePanel (project service, JCEF browser)
 
 **⚠️ PIT version is declared in 3 places** — all must be updated together:
 
-| Location | What | Current        |
-|----------|------|----------------|
+| Location | What | Current |
+| ---------- | ------ | ---------------- |
 | `build.gradle.kts` | `val pitVersion` / `val pitJunit5PluginVersion` | 1.30.0 / 1.2.3 |
 | `ClassPathPopulator.kt` | JAR filename strings | 1.30.0 / 1.2.3 / 0.1 |
-| `META-INF/plugin.xml` | Description text ("Bundled with PIT ...") | 1.30.0         |
-| `libs/pitest-rv-plugin-0.1.jar` | Inline JAR built from fork (not on Maven Central) | 0.1            |
+| `META-INF/plugin.xml` | Description text ("Bundled with PIT ...") | 1.30.0 |
+| `libs/pitest-rv-plugin-0.1.jar` | Inline JAR built from fork (not on Maven Central) | 0.1 |
 
 `pitest-rv-plugin` is NOT fetched from Maven Central — the published 0.1 is broken. Build the fork and copy the JAR to `libs/pitest-rv-plugin-0.1.jar` (see `libs/README.txt`). `PitVersionConsistencyTest` enforces consistency between `build.gradle.kts`, `ClassPathPopulator.kt`, and `META-INF/plugin.xml` for Maven-fetched dependencies; the inline JAR is checked by its literal filename in `ClassPathPopulator.kt`.
 
 ## Common Tasks
 
 ### Adding a new CLI argument
+
 1. Add enum value to `PitCommandLineArgument.kt` (e.g., `MUTATORS("--mutators")`)
 2. Add the field to `PitConfigurationForm.kt` + `PitConfigurationForm.form`
 3. Wire it in `ProgramParametersListPopulator.kt` (form → ParametersList)
@@ -227,15 +229,25 @@ MutationCoveragePanel (project service, JCEF browser)
 6. Add test in `PitCommandLineArgumentTest.kt`
 
 ### Adding a new context menu action
+
 1. Create class extending `PitAction` or `DirectoryOrFilePitAction`
 2. Register in `META-INF/plugin.xml` under `<actions>`
 3. Choose menu group: `ProjectViewPopupMenuRunGroup` (project view) or `EditorPopupMenu.Run` (editor)
 
 ### Updating PIT version
+
 1. Update `val pitVersion` in `build.gradle.kts`
 2. Update JAR filenames in `ClassPathPopulator.kt`
 3. Update `META-INF/plugin.xml` description
 4. Run `./gradlew test` — `PitVersionConsistencyTest` will catch build.gradle/classpath mismatches
+
+### Publishing to JetBrains Marketplace
+
+- Plugin ID is `com.github.awhicks.webcat-mutation-testing`, declared in `META-INF/plugin.xml` (`<id>`) and mirrored in `PLUGIN_ID` in `PitPluginIntegrationTest.kt` (the `@Remote` stubs route by it) — keep the two in sync. The ID identifies the Marketplace listing and **cannot be changed later** without creating a brand-new listing.
+- `LICENSE` is packaged into the plugin JAR's `META-INF` via the `tasks.jar` `metaInf` block — MIT requires the copyright notice to travel with distributed copies. Keep the upstream `2019 Michal Jedynak` line when editing it.
+- To publish: get a token from the plugins.jetbrains.com author profile ("Authorization tokens"), `export MARKETPLACE_TOKEN=...`, then `./gradlew publishPlugin` — or upload `build/distributions/*.zip` via the web UI ("Upload plugin"). First submission goes through manual JetBrains review; subsequent updates are usually auto-approved. Marketplace signs the plugin automatically on upload.
+- `since-build` is `262` because the plugin compiles to **Java 25 bytecode** (`jvmToolchain(25)`) and is only integration-tested against 2026.2. Older IDEs (JBR 17/21) would fail with `UnsupportedClassVersionError`. To widen support: lower the Kotlin JVM target (e.g. 21), lower `since-build`, and integration-test against the oldest claimed version first.
+- The Marketplace upload form asks for bundled third-party libraries + licenses: pitest/pitest-command-line/pitest-entry/pitest-junit5-plugin (Apache-2.0), junit-platform-launcher (EPL-2.0), commons-text + commons-lang3 (Apache-2.0), kotlin-stdlib (Apache-2.0), annotations (Apache-2.0), pitest-rv-plugin (bundled from the local fork in `libs/` — verify its upstream license permits redistribution).
 
 ## Key Gotchas
 
@@ -246,27 +258,32 @@ MutationCoveragePanel (project service, JCEF browser)
 ## Integration Test Troubleshooting
 
 ### Test Project Model
+
 - Test project (`src/integrationTest/resources/testProject/`) is a Gradle project used ONLY for pre-compilation (via `compileTestProject`). The test IDE does NOT import Gradle — it opens `build/testProject` as a plain project using the committed `.idea/` XML files. The module's compiled output dirs and `junit5` module-library (pointing at `build/testLib/`) are what make PIT find the compiled classes and JUnit engine. If these are missing, PIT exits with `No mutations found` and no report.
 - The `build.gradle.kts` JUnit version MUST match both the committed `.iml` library (jar filenames in `build/testLib/`) and the plugin's bundled `junit-platform-launcher` version. Currently all are `6.1.1`. A mismatch (e.g., `5.11.1` in test project + `6.1.1` launcher) causes PIT to fail silently with `"Pitest could not run any tests"` because the launcher and engine versions are incompatible.
 
 ### Debugging PIT failures
+
 - PIT runs as a forked JVM via `PitRunConfiguration.startProcess()`. If the process exits before a process listener is registered (because `super.startProcess()` starts the process), the listener misses `onTextAvailable` events. **Fix**: create the `ColoredProcessHandler` directly, attach listeners, then call `startNotify()`:
+
   ```kotlin
   val handler = ColoredProcessHandler(commandLine)
   handler.addProcessListener(object : ProcessListener { ... })
   handler.startNotify()
   ```
+
   (`ProcessAdapter` is deprecated in current platform versions — implement `ProcessListener` directly; all its methods have default implementations.)
 - To capture PIT output for debugging, run the exact command line from the test report directly in a terminal (extract from `PIT output: Command line:` in the HTML report). This bypasses IntelliJ and shows PIT's actual error messages.
 
 ### Key Integration Test Files
+
 - `PitTestHelper.kt` (in `src/testSupport/`) — Creates `PitRunConfiguration` and calls `executeConfiguration()` with `waitForProcessCompletion=true`.
 - `PitActionTestHelper.kt` (in `src/testSupport/`) — Provides `verifyActionUpdateForSourceClass()` (checks right-click action is visible/enabled for a source class) and `performActionForSourceClass()` (simulates clicking the action, triggering PIT execution).
 - `PitOutputReader.kt` (in `src/testSupport/`) — reads PIT process info from `RunContentManager` via reflection (exit code, command line, report dir contents, and optionally `pit-output.log` written by the plugin's process listener in `PitRunConfiguration`); also exposes `getDefaultReportDir(project)` which resolves the plugin's own report-dir default (see Report dir resolution above).
 - `PitCoverageTestHelper.kt` (in `src/testSupport/`) — opens `Calculator.java` in an editor, polls the markup model for `CoverageLineMarkerRenderer` instances, and returns `line:STATUS:HAS_TOOLTIP:HAS_MENU` quadruplets (e.g. `SUCCESS\n14:UNCOVERED:1:1`), where `HAS_TOOLTIP` is `1` when the line's `RangeHighlighter` has a `GutterIconRenderer` with a non-blank tooltip and `HAS_MENU` is `1` when that renderer exposes a popup menu (`getPopupMenuActions()`).
 
 - `PitPluginIntegrationTest.kt` — `@Remote` stubs call `PitTestHelper`/`PitActionTestHelper`/`PitOutputReader`/`PitCoverageTestHelper` inside the test IDE over JMX. All test methods share a single IDE process (started once in `@BeforeAll`, closed in `@AfterAll`). Each test cleans the resolved report dir, runs PIT, waits for a NEW report (top-level `index.html` or a fresh timestamped subdir), asserts via `assertReportFiles()`, and leaves the report for the next test to clean. `waitForHtmlReport` never matches pre-existing/stale reports (they'd cause flaky false-passes or partial-report assertions). The coverage test asserts the exact map `{14: UNCOVERED:1:1}` — only line 14 (`multiply`) is marked because its mutations are `NO_COVERAGE` (renamed to `LINES_NOT_TESTED`); lines 6 and 10 are `KILLED` and thus hidden (only actionable lines are shown). Every annotated line must have a gutter icon with a non-blank tooltip and a popup menu, mirroring the report.
+
 ### PIT HTML Report Structure
+
 PIT 1.25.9+ writes the report directly into the configured `--reportDir` (top-level `index.html`, `mutations.xml`, `calculator/` package pages). Older PIT created a timestamped subdirectory (e.g., `report/20260728.../index.html`); `DirectoryReader` and the test's `waitForHtmlReport` still support both layouts. The editor coverage annotation is driven by `mutations.xml` — `MutationReportParser` reads every `<mutation>`'s `lineNumber`/`sourceFile`/`mutatedClass`/`status` and keeps ALL of them; the annotator then marks only uncovered lines (red `#ffaaaa` / `0x8B3333`) and puts the mutation descriptions (`<mutatedMethod> : <description> → <STATUS>`) into the error-stripe tooltip.
-
-
